@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吃丹修仙战力计算器 v3.2</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #ec4899;
+            --primary-light: #fbcfe8;
+            --primary-dark: #db2777;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #fdf4ff 0%, #f0f9ff 100%);
+            min-height: 100vh;
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .input-focus:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+        }
+        
+        .btn-effect {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .btn-effect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .input-with-unit {
+            position: relative;
+        }
+        
+        .input-unit {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .result-item {
+            transition: all 0.3s ease;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            font-weight: normal;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+            border-left: 4px solid var(--primary);
+        }
+    </style>
+</head>
+<body class="py-8 px-4">
+    <div class="max-w-2xl mx-auto">
+        <!-- 页面标题 -->
+        <header class="text-center mb-10">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 mb-2">
+                吃丹修仙战力计算器v3.2
+            </h1>
+            <p class="text-gray-600 max-w-md mx-auto">精确计算修仙战力，合理规划修行路径</p>
+        </header>
+        
+        <!-- 主卡片 -->
+        <div class="bg-white rounded-2xl card-shadow p-6 md:p-8 mb-8">
+            <form id="calculatorForm" class="space-y-6">
+                <!-- 选择功能 -->
+                <div class="form-group">
+                    <label for="functionSelect" class="block text-gray-700 font-medium mb-2 flex items-center">
+                        <i class="fa fa-cogs text-pink-500 mr-2"></i>选择功能
+                    </label>
+                    <select id="functionSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                        <option value="targetPower">1指定战力计算</option>
+                        <option value="targetTime">2指定时间魔丹计算</option>
+                        <option value="powerCap">3战力上限计算器</option>
+                    </select>
+                </div>
+                
+                <!-- 现有战力输入 - 所有功能都需要 -->
+                <div class="form-group" id="currentPowerGroup">
+                    <label for="currentPower" class="block text-gray-700 font-medium mb-2 flex items-center">
+                        <i class="fa fa-bolt text-pink-500 mr-2"></i>现有战力
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="number" id="currentPower" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" placeholder="请输入数值" min="0" step="any" value="0" required>
+                        <select id="currentUnit" class="px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                            <option value="穰">穰 (10²⁸)</option>
+                            <option value="沟">沟 (10³²)</option>
+                            <option value="涧">涧 (10³⁶)</option>
+                            <option value="正">正 (10⁴⁰)</option>
+                            <option value="载">载 (10⁴⁴)</option>
+                            <option value="极">极 (10⁴⁸)</option>
+                            <option value="恒河沙">恒河沙 (10⁵²)</option>
+                            <option value="阿僧祇">阿僧祇 (10⁵⁶)</option>
+                            <option value="那由他">那由他 (10⁶⁰)</option>
+                            <option value="不可思议">不可思议 (10⁶⁴)</option>
+                            <option value="无量">无量 (10⁶⁸)</option>
+                            <option value="大数">大数 (10⁷²)</option>
+                            <option value="无敌">无敌 (10⁷⁶)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 目标战力输入 (功能1使用) -->
+                <div id="targetPowerGroup" class="form-group">
+                    <label for="targetPower" class="block text-gray-700 font-medium mb-2 flex items-center">
+                        <i class="fa fa-bullseye text-purple-600 mr-2"></i>目标战力
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="number" id="targetPower" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" placeholder="请输入数值" min="0" step="any" value="0" required>
+                        <select id="targetUnit" class="px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                            <option value="穰">穰 (10²⁸)</option>
+                            <option value="沟">沟 (10³²)</option>
+                            <option value="涧">涧 (10³⁶)</option>
+                            <option value="正">正 (10⁴⁰)</option>
+                            <option value="载">载 (10⁴⁴)</option>
+                            <option value="极">极 (10⁴⁸)</option>
+                            <option value="恒河沙">恒河沙 (10⁵²)</option>
+                            <option value="阿僧祇">阿僧祇 (10⁵⁶)</option>
+                            <option value="那由他">那由他 (10⁶⁰)</option>
+                            <option value="不可思议">不可思议 (10⁶⁴)</option>
+                            <option value="无量">无量 (10⁶⁸)</option>
+                            <option value="大数">大数 (10⁷²)</option>
+                            <option value="无敌">无敌 (10⁷⁶)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 指定时间计算相关选项 (功能2使用) -->
+                <div id="targetTimeGroup" class="form-group hidden">
+                    <!-- 计算模式 -->
+                    <div id="calculationModeGroup">
+                        <label for="calculationMode" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-calculator text-purple-600 mr-2"></i>计算模式
+                        </label>
+                        <select id="calculationMode" class="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                            <option value="bathTime">1泡澡时间</option>
+                            <option value="magicPill">2无极魔丹</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 泡澡时间输入 -->
+                    <div id="bathTimeInputGroup" class="form-group mt-4">
+                        <label class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-clock-o text-pink-500 mr-2"></i>泡澡时间
+                        </label>
+                        <div class="flex flex-wrap gap-3">
+                            <div class="flex-1 min-w-[120px] input-with-unit">
+                                <input type="number" id="bathDays" class="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 pr-10" placeholder="数值" min="0" step="1" value="0" required>
+                                <span class="input-unit">天</span>
+                            </div>
+                            <div class="flex-1 min-w-[120px] input-with-unit">
+                                <input type="number" id="bathHours" class="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 pr-10" placeholder="数值" min="0" max="23" step="1" value="0" required>
+                                <span class="input-unit">小时</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 无极魔丹输入 -->
+                    <div id="magicPillInputGroup" class="form-group mt-4 hidden">
+                        <label for="pillCount" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-capsules text-amber-600 mr-2"></i>无极魔丹数量
+                        </label>
+                        <div class="flex">
+                            <input type="number" id="pillCountInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" placeholder="颗" min="0" step="1" value="0" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 战力上限计算器相关选项 (功能3使用) -->
+                <div id="powerCapGroup" class="form-group hidden">
+                    <!-- 基础生命值 -->
+                    <div class="form-group">
+                        <label for="baseHp" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-heart text-red-500 mr-2"></i>基础生命值
+                        </label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="number" id="baseHp" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" placeholder="请输入数值" min="0" step="any" value="0" required>
+                            <select id="baseHpUnit" class="px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                                <option value="穰">穰 (10²⁸)</option>
+                                <option value="沟">沟 (10³²)</option>
+                                <option value="涧">涧 (10³⁶)</option>
+                                <option value="正">正 (10⁴⁰)</option>
+                                <option value="载">载 (10⁴⁴)</option>
+                                <option value="极">极 (10⁴⁸)</option>
+                                <option value="恒河沙">恒河沙 (10⁵²)</option>
+                                <option value="阿僧祇">阿僧祇 (10⁵⁶)</option>
+                                <option value="那由他">那由他 (10⁶⁰)</option>
+                                <option value="不可思议">不可思议 (10⁶⁴)</option>
+                                <option value="无量">无量 (10⁶⁸)</option>
+                                <option value="大数">大数 (10⁷²)</option>
+                                <option value="无敌">无敌 (10⁷⁶)</option>
+                            </select>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">基础战力：点开头像属性面板，第一排的属性。不是大厅左上角的生命！</p>
+                    </div>
+                    
+                    <!-- 轮回次数 -->
+                    <div class="form-group mt-4">
+                        <label for="reincarnationCount" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-refresh text-purple-500 mr-2"></i>轮回次数
+                        </label>
+                        <select id="reincarnationCount" class="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10+">10及以上需自填上限！</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 基础生命值上限 -->
+                    <div class="form-group mt-4">
+                        <label for="hpCapValue" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <i class="fa fa-shield text-green-500 mr-2"></i>你的基础生命值上限
+                        </label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="number" id="hpCapValue" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" placeholder="请输入数值" min="0" step="any" value="0" required>
+                            <select id="hpCapUnit" class="px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200 bg-white" required>
+                                <option value="穰">穰 (10²⁸)</option>
+                                <option value="沟">沟 (10³²)</option>
+                                <option value="涧">涧 (10³⁶)</option>
+                                <option value="正">正 (10⁴⁰)</option>
+                                <option value="载">载 (10⁴⁴)</option>
+                                <option value="极">极 (10⁴⁸)</option>
+                                <option value="恒河沙">恒河沙 (10⁵²)</option>
+                                <option value="阿僧祇">阿僧祇 (10⁵⁶)</option>
+                                <option value="那由他">那由他 (10⁶⁰)</option>
+                                <option value="不可思议">不可思议 (10⁶⁴)</option>
+                                <option value="无量">无量 (10⁶⁸)</option>
+                                <option value="大数">大数 (10⁷²)</option>
+                                <option value="无敌">无敌 (10⁷⁶)</option>
+                            </select>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">点开轮回界面可查看</p>
+                    </div>
+                </div>
+                
+                <!-- 挂机天赋等级 (所有功能都需要) -->
+                <div class="form-group" id="talentLevelGroup">
+                    <label for="talentLevel" class="block text-gray-700 font-medium mb-2 flex items-center">
+                        <i class="fa fa-star text-yellow-500 mr-2"></i>挂机天赋等级
+                    </label>
+                    <div class="flex items-center">
+                        <input type="number" id="talentLevel" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg input-focus transition-all duration-200" value="0" min="0" max="10" step="1" required>
+                        <span class="ml-3 text-gray-500">0-10级</span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <span id="growthRateDisplay">当前每5秒增长: 0.010%</span>
+                    </div>
+                </div>
+                
+                <!-- 计算按钮 -->
+                <div class="pt-2">
+                    <button type="button" id="calculateButton" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg btn-effect focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all duration-300 flex items-center justify-center">
+                        <i class="fa fa-calculator mr-2"></i>开始计算
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 结果展示区域 -->
+        <div id="resultSection" class="hidden bg-white rounded-2xl card-shadow p-6 md:p-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">计算结果</h2>
+            
+            <div class="space-y-4" id="resultContent">
+                <!-- 结果内容将根据计算模式动态生成 -->
+            </div>
+            
+            <!-- 重新计算按钮 -->
+            <div class="mt-6">
+                <button id="resetButton" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-6 rounded-lg transition-all duration-200 btn-effect">
+                    <i class="fa fa-refresh mr-2"></i>重新计算
+                </button>
+            </div>
+        </div>
+        
+        <!-- 信息卡片 -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 text-sm text-gray-600 mt-6">
+            <h3 class="font-medium text-gray-800 mb-2 flex items-center">
+                <i class="fa fa-info-circle text-pink-500 mr-2"></i>单位与道具说明
+            </h3>
+            <p>1沟 = 10000穰，1涧 = 10000沟，以此类推，每级单位相差10000倍</p>
+            <p class="mt-1">无极魔丹：每颗固定增加0.01%属性</p>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="text-center text-gray-500 text-sm mt-10 pb-6">
+            <p>吃丹修仙战力计算器 v3.2</p>
+        </footer>
+    </div>
+    
+    <script>
+        // 单位到指数的映射（每级相差10000倍，即10^4）
+        const unitExponents = {
+            '穰': 28,
+            '沟': 32,  // 穰 + 4
+            '涧': 36,  // 沟 + 4
+            '正': 40,  // 涧 + 4
+            '载': 44,  // 正 + 4
+            '极': 48,  // 载 + 4
+            '恒河沙': 52,  // 极 + 4
+            '阿僧祇': 56,  // 恒河沙 + 4
+            '那由他': 60,  // 阿僧祇 + 4
+            '不可思议': 64,  // 那由他 + 4
+            '无量': 68,  // 不可思议 + 4
+            '大数': 72,  // 无量 + 4
+            '无敌': 76   // 大数 + 4
+        };
+        
+        // 轮回次数对应的基础生命上限
+        const reincarnationHpCaps = {
+            '0': { value: 250, unit: '涧' },
+            '1': { value: 7500, unit: '涧' },
+            '2': { value: 23.3, unit: '正' },
+            '3': { value: 744, unit: '正' },
+            '4': { value: 2.46, unit: '载' },
+            '5': { value: 83.50, unit: '载' },
+            '6': { value: 2920, unit: '载' },
+            '7': { value: 10.5, unit: '极' },
+            '8': { value: 389, unit: '极' },
+            '9': { value: 1.50, unit: '恒河沙' }
+        };
+        
+        // 单位列表（按从小到大排序）
+        const unitList = [
+            '穰', '沟', '涧', '正', '载', '极', 
+            '恒河沙', '阿僧祇', '那由他', '不可思议', 
+            '无量', '大数', '无敌'
+        ];
+        
+        // 获取DOM元素
+        const form = document.getElementById('calculatorForm');
+        const calculateButton = document.getElementById('calculateButton');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+        const resetButton = document.getElementById('resetButton');
+        const talentLevelInput = document.getElementById('talentLevel');
+        const growthRateDisplay = document.getElementById('growthRateDisplay');
+        
+        // 功能选择相关元素
+        const functionSelect = document.getElementById('functionSelect');
+        const targetPowerGroup = document.getElementById('targetPowerGroup');
+        const targetTimeGroup = document.getElementById('targetTimeGroup');
+        const powerCapGroup = document.getElementById('powerCapGroup');
+        const talentLevelGroup = document.getElementById('talentLevelGroup');
+        
+        // 战力上限计算器相关元素
+        const reincarnationCount = document.getElementById('reincarnationCount');
+        const hpCapValue = document.getElementById('hpCapValue');
+        const hpCapUnit = document.getElementById('hpCapUnit');
+        
+        // 计算模式相关元素
+        const calculationMode = document.getElementById('calculationMode');
+        const bathTimeInputGroup = document.getElementById('bathTimeInputGroup');
+        const magicPillInputGroup = document.getElementById('magicPillInputGroup');
+        
+        // 初始化函数
+        function init() {
+            // 设置初始状态
+            functionSelect.dispatchEvent(new Event('change'));
+            talentLevelInput.dispatchEvent(new Event('input'));
+            
+            // 添加输入验证
+            addInputValidation();
+        }
+        
+        // 添加输入验证
+        function addInputValidation() {
+            const numberInputs = document.querySelectorAll('input[type="number"]');
+            numberInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.value && this.value < 0) {
+                        this.value = 0;
+                        showToast('数值不能为负数，已自动调整为0', 'warning');
+                    }
+                });
+            });
+        }
+        
+        // 显示提示信息
+        function showToast(message, type = 'info') {
+            // 创建toast元素
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white max-w-sm animate-fadeIn ${
+                type === 'error' ? 'bg-red-500' : 
+                type === 'warning' ? 'bg-amber-500' : 
+                type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            
+            // 添加到页面
+            document.body.appendChild(toast);
+            
+            // 3秒后移除
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 500);
+            }, 3000);
+        }
+        
+        // 轮回次数变化事件处理
+        reincarnationCount.addEventListener('change', function() {
+            const selectedValue = this.value;
+            
+            // 检查是否是0-9的轮回次数
+            if (reincarnationHpCaps.hasOwnProperty(selectedValue)) {
+                // 自动填充基础生命值上限
+                const capData = reincarnationHpCaps[selectedValue];
+                hpCapValue.value = capData.value;
+                hpCapUnit.value = capData.unit;
+                
+                // 锁定输入框
+                hpCapValue.disabled = true;
+                hpCapUnit.disabled = true;
+                hpCapValue.classList.add('bg-gray-100', 'text-gray-500', 'cursor-not-allowed');
+                hpCapUnit.classList.add('bg-gray-100', 'text-gray-500', 'cursor-not-allowed');
+            } else {
+                // 10及以上，解锁输入框
+                hpCapValue.disabled = false;
+                hpCapUnit.disabled = false;
+                hpCapValue.classList.remove('bg-gray-100', 'text-gray-500', 'cursor-not-allowed');
+                hpCapUnit.classList.remove('bg-gray-100', 'text-gray-500', 'cursor-not-allowed');
+                
+                // 清空值，让用户自己输入
+                hpCapValue.value = '';
+            }
+        });
+        
+        // 功能选择变化事件
+        functionSelect.addEventListener('change', function() {
+            // 重置所有组的显示状态
+            targetPowerGroup.classList.add('hidden');
+            targetTimeGroup.classList.add('hidden');
+            powerCapGroup.classList.add('hidden');
+            
+            // 挂机天赋等级现在所有功能都需要，所以始终显示
+            talentLevelGroup.classList.remove('hidden');
+            
+            // 根据选择显示对应组
+            if (this.value === 'targetPower') {
+                // 1. 指定战力计算
+                targetPowerGroup.classList.remove('hidden');
+            } else if (this.value === 'targetTime') {
+                // 2. 指定时间计算
+                targetTimeGroup.classList.remove('hidden');
+                bathTimeInputGroup.classList.remove('hidden');
+                magicPillInputGroup.classList.add('hidden');
+            } else if (this.value === 'powerCap') {
+                // 3. 战力上限计算器
+                powerCapGroup.classList.remove('hidden');
+                // 触发一次轮回次数的change事件，确保初始状态正确
+                reincarnationCount.dispatchEvent(new Event('change'));
+            }
+        });
+        
+        // 计算模式变化事件
+        calculationMode.addEventListener('change', function() {
+            if (this.value === 'bathTime') {
+                bathTimeInputGroup.classList.remove('hidden');
+                magicPillInputGroup.classList.add('hidden');
+            } else if (this.value === 'magicPill') {
+                bathTimeInputGroup.classList.add('hidden');
+                magicPillInputGroup.classList.remove('hidden');
+            }
+        });
+        
+        // 更新增长率显示
+        talentLevelInput.addEventListener('input', function() {
+            const level = parseInt(this.value) || 0;
+            const clampedLevel = Math.max(0, Math.min(10, level));
+            this.value = clampedLevel;
+            
+            const growthRate = 0.010 + clampedLevel * 0.001;
+            growthRateDisplay.textContent = `当前每5秒增长: ${growthRate.toFixed(3)}%`;
+        });
+        
+        // 计算按钮点击处理
+        calculateButton.addEventListener('click', function() {
+            try {
+                // 显示加载状态
+                const originalText = calculateButton.innerHTML;
+                calculateButton.innerHTML = '<div class="loading mr-2"></div>计算中...';
+                calculateButton.disabled = true;
+                
+                // 延迟执行计算，让用户看到加载状态
+                setTimeout(() => {
+                    performCalculation();
+                    
+                    // 恢复按钮状态
+                    calculateButton.innerHTML = originalText;
+                    calculateButton.disabled = false;
+                }, 500);
+                
+            } catch (error) {
+                console.error('计算过程出错:', error);
+                showToast('计算过程中出现错误，请检查输入值是否合理', 'error');
+                
+                // 恢复按钮状态
+                calculateButton.innerHTML = '<i class="fa fa-calculator mr-2"></i>开始计算';
+                calculateButton.disabled = false;
+            }
+        });
+        
+        // 执行计算的核心函数
+        function performCalculation() {
+            const selectedFunction = functionSelect.value;
+            
+            // 获取现有战力值（所有功能都需要）
+            const currentPower = parseFloat(document.getElementById('currentPower').value);
+            const currentUnit = document.getElementById('currentUnit').value;
+            
+            // 验证现有战力输入
+            if (isNaN(currentPower) || currentPower <= 0) {
+                showToast('请输入有效的现有战力数值（必须大于0）', 'error');
+                return;
+            }
+            
+            // 计算当前战力的实际值（转换为10的幂次方）
+            const currentPowerValue = currentPower * Math.pow(10, unitExponents[currentUnit]);
+            
+            // 获取挂机天赋等级（所有功能都需要）
+            const talentLevel = parseInt(document.getElementById('talentLevel').value) || 0;
+            if (talentLevel < 0 || talentLevel > 10) {
+                showToast('挂机天赋等级必须在0-10之间', 'error');
+                return;
+            }
+            
+            // 根据选择的功能执行不同的计算和验证
+            let resultHtml = '';
+            
+            if (selectedFunction === 'targetPower') {
+                // 1. 指定战力计算 - 只验证当前功能所需字段
+                const targetPower = parseFloat(document.getElementById('targetPower').value);
+                const targetUnit = document.getElementById('targetUnit').value;
+                
+                // 验证当前功能所需字段
+                if (isNaN(targetPower) || targetPower <= 0) {
+                    showToast('请输入有效的目标战力数值（必须大于0）', 'error');
+                    return;
+                }
+                
+                // 计算目标战力的实际值
+                const targetPowerValue = targetPower * Math.pow(10, unitExponents[targetUnit]);
+                
+                if (currentPowerValue >= targetPowerValue) {
+                    showToast('目标战力必须大于现有战力', 'warning');
+                    return;
+                }
+                
+                // 计算增长率（每5秒）
+                const growthRate = 0.010 + talentLevel * 0.001; // 百分比
+                const growthFactor = 1 + growthRate / 100; // 每5秒的增长因子
+                
+                // 计算需要多少个5秒周期才能达到目标
+                const ratio = targetPowerValue / currentPowerValue;
+                const cycles = Math.ceil(Math.log(ratio) / Math.log(growthFactor));
+                
+                // 总秒数
+                const totalSeconds = cycles * 5;
+                
+                // 计算等效无极魔丹数量（每颗增加0.01%）
+                const pillGrowthFactor = 1.0001; // 每颗魔丹的增长因子（0.01%）
+                const pillCount = Math.ceil(Math.log(ratio) / Math.log(pillGrowthFactor));
+                
+                // 格式化时间
+                const timeData = formatTime(totalSeconds);
+                
+                // 计算目标日期时间
+                const targetDate = new Date();
+                targetDate.setSeconds(targetDate.getSeconds() + totalSeconds);
+                
+                // 构建结果HTML
+                resultHtml = `
+                    <div class="result-item p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h3 class="text-gray-700 font-medium mb-1">所需时间</h3>
+                        <p class="text-lg font-semibold text-blue-600">${timeData.primaryTime}（${timeData.secondaryTime}）</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-purple-50 rounded-lg border border-purple-100">
+                        <h3 class="text-gray-700 font-medium mb-1">预计达成时间</h3>
+                        <p class="text-lg font-semibold text-purple-600">${formatDate(targetDate)}</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-amber-50 rounded-lg border border-amber-100">
+                        <h3 class="text-gray-700 font-medium mb-1">需要等效无极魔丹数量</h3>
+                        <p class="text-lg font-semibold text-amber-600">${pillCount.toLocaleString()}颗（${formatLargeNumber(pillCount)}）</p>
+                    </div>
+                `;
+                
+            } else if (selectedFunction === 'targetTime') {
+                // 2. 指定时间计算 - 只验证当前功能所需字段
+                let finalPowerValue;
+                
+                if (calculationMode.value === 'bathTime') {
+                    // 2.1 泡澡时间模式
+                    const days = parseInt(document.getElementById('bathDays').value) || 0;
+                    const hours = parseInt(document.getElementById('bathHours').value) || 0;
+                    
+                    if (days <= 0 && hours <= 0) {
+                        showToast('请输入有效的泡澡时间（天数和小时数不能同时为0）', 'error');
+                        return;
+                    }
+                    
+                    // 计算总秒数
+                    const totalSeconds = days * 86400 + hours * 3600;
+                    // 计算5秒周期数
+                    const cycles = Math.floor(totalSeconds / 5);
+                    
+                    // 计算增长率
+                    const growthRate = 0.010 + talentLevel * 0.001; // 百分比
+                    const growthFactor = 1 + growthRate / 100; // 每5秒的增长因子
+                    
+                    // 计算最终战力
+                    finalPowerValue = currentPowerValue * Math.pow(growthFactor, cycles);
+                    
+                    // 构建结果HTML
+                    resultHtml = `
+                        <div class="result-item p-4 bg-green-50 rounded-lg border border-green-100">
+                            <h3 class="text-gray-700 font-medium mb-1">泡澡时间</h3>
+                            <p class="text-lg font-semibold text-green-600">${days}天${hours}小时（约${Math.round(totalSeconds / 3600)}小时）</p>
+                        </div>
+                        
+                        <div class="result-item p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <h3 class="text-gray-700 font-medium mb-1">最终战力</h3>
+                            <p class="text-lg font-semibold text-yellow-600">${formatPowerValue(finalPowerValue)}</p>
+                        </div>
+                    `;
+                    
+                } else if (calculationMode.value === 'magicPill') {
+                    // 2.2 无极魔丹模式
+                    const pillCount = parseInt(document.getElementById('pillCountInput').value) || 0;
+                    
+                    if (pillCount <= 0) {
+                        showToast('请输入有效的无极魔丹数量（必须大于0）', 'error');
+                        return;
+                    }
+                    
+                    // 计算最终战力（每颗魔丹增加0.01%）
+                    const growthFactor = 1.0001; // 每颗魔丹的增长因子（0.01%）
+                    finalPowerValue = currentPowerValue * Math.pow(growthFactor, pillCount);
+                    
+                    // 构建结果HTML
+                    resultHtml = `
+                        <div class="result-item p-4 bg-purple-50 rounded-lg border border-purple-100">
+                            <h3 class="text-gray-700 font-medium mb-1">无极魔丹数量</h3>
+                            <p class="text-lg font-semibold text-purple-600">${pillCount.toLocaleString()}颗</p>
+                        </div>
+                        
+                        <div class="result-item p-4 bg-pink-50 rounded-lg border border-pink-100">
+                            <h3 class="text-gray-700 font-medium mb-1">最终战力</h3>
+                            <p class="text-lg font-semibold text-pink-600">${formatPowerValue(finalPowerValue)}</p>
+                        </div>
+                    `;
+                }
+                
+            } else if (selectedFunction === 'powerCap') {
+                // 3. 战力上限计算器 - 只验证当前功能所需字段
+                const baseHp = parseFloat(document.getElementById('baseHp').value);
+                const baseHpUnit = document.getElementById('baseHpUnit').value;
+                const hpCap = parseFloat(document.getElementById('hpCapValue').value);
+                const hpCapUnitValue = document.getElementById('hpCapUnit').value;
+                
+                // 验证当前功能所需字段
+                if (isNaN(baseHp) || baseHp <= 0) {
+                    showToast('请输入有效的基础生命值（必须大于0）', 'error');
+                    return;
+                }
+                
+                if (isNaN(hpCap) || hpCap <= 0) {
+                    showToast('请输入有效的基础生命值上限（必须大于0）', 'error');
+                    return;
+                }
+                
+                // 计算基础生命值和上限的实际值
+                const baseHpValue = baseHp * Math.pow(10, unitExponents[baseHpUnit]);
+                const hpCapValueActual = hpCap * Math.pow(10, unitExponents[hpCapUnitValue]);
+                
+                // 计算战力上限（基础生命值上限 * 10000）
+                const powerCapValue = hpCapValueActual * 10000;
+                
+                // 计算当前战力与上限的百分比
+                const currentPercentage = (currentPowerValue / powerCapValue) * 100;
+                
+                // 计算距离上限还有多少
+                const remainingPower = powerCapValue - currentPowerValue;
+                
+                // 计算达到上限所需时间（基于挂机天赋）
+                const growthRate = 0.010 + talentLevel * 0.001; // 百分比
+                const growthFactor = 1 + growthRate / 100; // 每5秒的增长因子
+                
+                // 计算需要多少个5秒周期才能达到上限
+                const ratio = powerCapValue / currentPowerValue;
+                const cycles = Math.ceil(Math.log(ratio) / Math.log(growthFactor));
+                
+                // 总秒数
+                const totalSeconds = cycles * 5;
+                
+                // 计算等效无极魔丹数量（每颗增加0.01%）
+                const pillGrowthFactor = 1.0001; // 每颗魔丹的增长因子（0.01%）
+                const pillCount = Math.ceil(Math.log(ratio) / Math.log(pillGrowthFactor));
+                
+                // 格式化时间
+                const timeData = formatTime(totalSeconds);
+                
+                // 计算目标日期时间
+                const targetDate = new Date();
+                targetDate.setSeconds(targetDate.getSeconds() + totalSeconds);
+                
+                // 构建结果HTML
+                resultHtml = `
+                    <div class="result-item p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h3 class="text-gray-700 font-medium mb-1">当前战力与上限对比</h3>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                            <div class="bg-gradient-to-r from-green-400 to-blue-500 h-4 rounded-full" style="width: ${Math.min(currentPercentage, 100)}%"></div>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">当前战力：${formatPowerValue(currentPowerValue)}</p>
+                        <p class="text-sm text-gray-600">战力上限：${formatPowerValue(powerCapValue)}</p>
+                        <p class="text-sm text-gray-600">完成度：${currentPercentage.toFixed(6)}%</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-amber-50 rounded-lg border border-amber-100">
+                        <h3 class="text-gray-700 font-medium mb-1">距离上限还差</h3>
+                        <p class="text-lg font-semibold text-amber-600">${formatPowerValue(remainingPower)}</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-green-50 rounded-lg border border-green-100">
+                        <h3 class="text-gray-700 font-medium mb-1">达到上限所需时间</h3>
+                        <p class="text-lg font-semibold text-green-600">${timeData.primaryTime}（${timeData.secondaryTime}）</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-purple-50 rounded-lg border border-purple-100">
+                        <h3 class="text-gray-700 font-medium mb-1">预计达成时间</h3>
+                        <p class="text-lg font-semibold text-purple-600">${formatDate(targetDate)}</p>
+                    </div>
+                    
+                    <div class="result-item p-4 bg-pink-50 rounded-lg border border-pink-100">
+                        <h3 class="text-gray-700 font-medium mb-1">需要等效无极魔丹数量</h3>
+                        <p class="text-lg font-semibold text-pink-600">${pillCount.toLocaleString()}颗（${formatLargeNumber(pillCount)}）</p>
+                    </div>
+                `;
+            }
+            
+            // 显示结果区域
+            resultContent.innerHTML = resultHtml;
+            resultSection.classList.remove('hidden');
+            
+            // 滚动到结果区域
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // 显示成功提示
+            showToast('计算完成！', 'success');
+        }
+        
+        // 重置按钮点击处理
+        resetButton.addEventListener('click', function() {
+            // 隐藏结果区域
+            resultSection.classList.add('hidden');
+            
+            // 重置表单
+            form.reset();
+            
+            // 重新初始化
+            init();
+            
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // 显示提示
+            showToast('已重置所有输入', 'info');
+        });
+        
+        // 格式化时间函数
+        function formatTime(totalSeconds) {
+            const days = Math.floor(totalSeconds / 86400);
+            const hours = Math.floor((totalSeconds % 86400) / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            
+            let primaryTime = '';
+            let secondaryTime = '';
+            
+            if (days > 0) {
+                primaryTime = `${days}天${hours}小时${minutes}分钟`;
+                secondaryTime = `${(totalSeconds / 86400).toFixed(2)}天`;
+            } else if (hours > 0) {
+                primaryTime = `${hours}小时${minutes}分钟${seconds}秒`;
+                secondaryTime = `${(totalSeconds / 3600).toFixed(2)}小时`;
+            } else if (minutes > 0) {
+                primaryTime = `${minutes}分钟${seconds}秒`;
+                secondaryTime = `${(totalSeconds / 60).toFixed(2)}分钟`;
+            } else {
+                primaryTime = `${seconds}秒`;
+                secondaryTime = `${totalSeconds}秒`;
+            }
+            
+            return { primaryTime, secondaryTime };
+        }
+        
+        // 格式化日期时间
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+        
+        // 格式化战力值
+        function formatPowerValue(value) {
+            // 找到合适的单位
+            let exponent = Math.floor(Math.log10(value));
+            let unitIndex = Math.floor((exponent - 28) / 4);
+            
+            // 确保单位索引在有效范围内
+            unitIndex = Math.max(0, Math.min(unitList.length - 1, unitIndex));
+            
+            const unit = unitList[unitIndex];
+            const unitExponent = unitExponents[unit];
+            
+            // 计算该单位下的数值
+            const unitValue = value / Math.pow(10, unitExponent);
+            
+            return `${unitValue.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${unit}`;
+        }
+        
+        // 格式化大数字（用于魔丹数量）
+        function formatLargeNumber(num) {
+            if (num < 10000) {
+                return num.toLocaleString();
+            } else if (num < 100000000) {
+                return (num / 10000).toFixed(2) + '万';
+            } else {
+                return (num / 100000000).toFixed(2) + '亿';
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
